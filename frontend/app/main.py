@@ -222,7 +222,7 @@ def trim_dict_content(dict_to_trim):
 
 def get_ip():
     for iface in netifaces.interfaces():
-        if iface in ['eth0', 'nsx-eth0', 'ens192']:
+        if iface in ['eth0', 'nsx-eth0', 'ens192', 'ens160']:
             return netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr']
 
 
