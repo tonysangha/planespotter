@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import redis
-import ConfigParser
+import configparser
 import socket
 import json
 import requests as req
@@ -9,7 +9,7 @@ BUFSIZE = 4096
 
 
 def adsb_poll(url, qfilter, r_client):
-    print 'starting polling data ...'
+    print('starting polling data ...')
     while True:
         try:
             resp = req.get('{}{}'.format(url, qfilter), timeout=60)
@@ -38,7 +38,7 @@ def adsb_stream(server, port, r_client):
     last_read = ''
     last_repeated_len = 0
     len_saved = 0
-    print 'starting receiving data ...'
+    print('starting receiving data ...')
     while True:
         chunks = []
         bytes_recd = 0
@@ -51,9 +51,9 @@ def adsb_stream(server, port, r_client):
                 return True, "adsb server socket connection broken"
             chunks.append(chunk)
             bytes_recd = bytes_recd + len(chunk)
-#           print 'received {} bytes of data ...'.format(bytes_recd)
+#           print('received {} bytes of data ...'.format(bytes_recd))
         last_read = last_read + b''.join(chunks)
-#       print 'current buffer size is {} ...'.format(len(last_read))
+#       print('current buffer size is {} ...'.format(len(last_read)))
         if last_read.count('acList') >= 2:
             last_ac_list, remainder = get_one_aclist(last_read)
             last_read = remainder
@@ -74,7 +74,7 @@ def adsb_stream(server, port, r_client):
 def get_one_aclist(in_string):
     first_pos = in_string.find('acList') - 2
     second_pos = in_string.find('acList', first_pos + 8) - 2
-    print ' received a new acft list ...'
+    print(' received a new acft list ...')
     return in_string[first_pos:second_pos], in_string[second_pos:]
 
 
@@ -95,18 +95,18 @@ def wr_icao_redis(icao_list, r_client, data_lifetime):
     except (redis.exceptions.ConnectionError,
             redis.exceptions.TimeoutError) as e:
         return None, '\nredis connection fail: \n{}\n'.format(e.message)
-    print "wrote {} records into redis".format(len(icao_list))
+    print("wrote {} records into redis".format(len(icao_list)))
     return True, None
 
 
 def main():
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     assert config.read('config/config.ini'), 'could not read config file'
 
     redis_server = config.get('main', 'redis_server')
     try:
         redis_port = int(config.get('main', 'redis_port'))
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         redis_port = 6379
 
     r_client = redis.StrictRedis(host=redis_server, port=redis_port,
@@ -117,14 +117,14 @@ def main():
         unrecoverable_error = False
         try:
             adsb_port = int(config.get('main', 'adsb_port'))
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             adsb_port = 32030
         while not unrecoverable_error:
             error, error_details = adsb_stream(adsb_server_stream, adsb_port,
                                                r_client)
             if error:
-                print 'Error in data ret/wr loop:{}'.format(error_details)
-            print 'Trying to start data retrieval loop again in 30 seconds\n'
+                print('Error in data ret/wr loop:{}'.format(error_details))
+            print('Trying to start data retrieval loop again in 30 seconds\n')
             sleep(30)
 
     if config.get('main', 'adsb_type') == 'poll':
@@ -133,14 +133,14 @@ def main():
         adsb_server_url = config.get('main', 'adsb_server_poll_url')
         try:
             adsb_qfilter = config.get('main', 'adsb_poll_filter')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             adsb_qfilter = '?fRegS=N'
         while not unrecoverable_error:
             error, error_details = adsb_poll(adsb_server_url, adsb_qfilter,
                                              r_client)
             if error:
-                print 'Error in data poll loop:{}'.format(error_details)
-            print 'Trying to start data poll loop again in 30 seconds\n'
+                print('Error in data poll loop:{}'.format(error_details))
+            print('Trying to start data poll loop again in 30 seconds\n')
             sleep(30)
 
 
